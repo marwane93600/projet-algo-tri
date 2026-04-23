@@ -6,3 +6,5 @@ __pycache__/
 *.pyc
 benchmark_grande_*.txt
 benchmark_petite_*.txt
+benchmark_test
+tri_test
