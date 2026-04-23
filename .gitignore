@@ -1,0 +1,8 @@
+*.o
+*.out
+a.out
+.DS_Store
+__pycache__/
+*.pyc
+benchmark_grande_*.txt
+benchmark_petite_*.txt

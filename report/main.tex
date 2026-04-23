@@ -1,0 +1,828 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[french]{babel}
+\usepackage{lmodern}
+\usepackage{geometry}
+\usepackage{graphicx}
+\usepackage{subcaption}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{url}
+\usepackage{float}
+\usepackage{enumitem}
+
+\geometry{margin=2.5cm}
+
+\title{Algorithmique et programmation\\[0.5em]
+TD4 : Comparaison d'algorithmes de tri}
+\author{Marwane El Bachir Youssef Badr\\L3 MIAGE / CMI / DL}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+\tableofcontents
+\newpage
+
+%=========================================================
+\section{Introduction}
+%=========================================================
+
+L'objectif de ce projet est de comparer expérimentalement différents
+algorithmes de tri étudiés en cours d'algorithmique.  
+Plutôt que de se limiter à l'analyse théorique des complexités, on
+cherche ici à mesurer les temps d'exécution réels en fonction :
+
+\begin{itemize}
+  \item de la \textbf{taille} du tableau à trier~;
+  \item de la \textbf{structure initiale} des données (tableau déjà trié,
+        trié à l'envers, constant ou aléatoire)~;
+  \item de la \textbf{plage de valeurs} des entiers (petites valeurs
+        vs grandes valeurs).
+\end{itemize}
+
+Les algorithmes étudiés sont :
+
+\begin{itemize}
+  \item tri à bulle (trois variantes)~;
+  \item tri cocktail~;
+  \item tri par sélection~;
+  \item tri par insertion~;
+  \item tri par comptage (dénombrement)~;
+  \item tri fusion~;
+  \item tri rapide.
+\end{itemize}
+
+Les résultats sont présentés sous la forme de courbes générées à partir
+d'un fichier CSV, puis analysés en les confrontant aux complexités
+théoriques vues en cours.
+
+%=========================================================
+\section{Environnement de test}
+%=========================================================
+
+\subsection{Configuration matérielle et logicielle}
+
+Les expériences ont été réalisées sur la machine personnelle suivante
+(les valeurs ci-dessous sont indicatives et peuvent être adaptées au
+matériel réel)~:
+
+\begin{itemize}
+  \item \textbf{Machine} : MacBook Pro (puce Apple Silicon / Intel, 8--16 Go RAM)~;
+  \item \textbf{Système d'exploitation} : macOS~;
+  \item \textbf{Langage de programmation} : C (standard C99)~;
+  \item \textbf{Compilateur} : \texttt{gcc} (via \texttt{clang} sous macOS)~;
+  \item \textbf{Options de compilation} : \texttt{-O2} pour activer des
+        optimisations classiques.
+\end{itemize}
+
+L'utilisation d'un seul cœur est supposée, et aucun autre programme
+lourd n'était en cours d'exécution lors des mesures, afin de limiter le
+bruit expérimental.
+
+\subsection{Mesure du temps}
+
+Le temps d'exécution a été mesuré en C à l'aide de la fonction
+\texttt{clock()} de la bibliothèque standard \texttt{time.h}.  
+Pour chaque expérience, on ne mesure que le temps de la \textbf{fonction
+de tri}, et non le temps de génération des tableaux de test.
+
+Le principe est le suivant~:
+
+\begin{verbatim}
+clock_t debut = clock();
+/* appel de l'algorithme de tri */
+clock_t fin = clock();
+double duree = (double)(fin - debut) / CLOCKS_PER_SEC;
+\end{verbatim}
+
+Cette durée (en secondes) est ensuite écrite dans le fichier CSV
+\texttt{resultats.csv}, avec les informations associées
+(type de tri, taille du tableau, cas, plage de valeurs).
+
+%=========================================================
+\section{Algorithmes étudiés}
+%=========================================================
+
+Dans cette section, on rappelle brièvement le principe de chaque
+algorithme, ainsi que sa complexité théorique en fonction de la taille
+du tableau $n$.
+
+\subsection{Tri à bulle et variantes}
+
+Le tri à bulle parcourt le tableau plusieurs fois et échange les
+éléments adjacents mal ordonnés.  
+La version de base effectue systématiquement $n-1$ passages, indépendamment
+de l'ordre des données.
+
+\begin{itemize}
+  \item \textbf{Cas moyen et pire} : $\mathcal{O}(n^2)$ comparaisons et échanges~;
+  \item \textbf{Meilleur cas} (tableau déjà trié) : toujours $\mathcal{O}(n^2)$
+        pour la version basique, car tous les passages sont effectués.
+\end{itemize}
+
+Deux optimisations classiques ont été implémentées~:
+
+\begin{itemize}
+  \item une version \emph{bulle\_basique\_v2} qui réduit la longueur
+        du parcours à chaque itération (les plus grands éléments «~bulle~»
+        déjà en fin de tableau)~;
+  \item une version \emph{bulle\_optimise} qui s'arrête dès qu'aucun
+        échange n'est réalisé pendant un passage, ce qui donne un
+        meilleur cas en $\mathcal{O}(n)$ lorsque le tableau est déjà trié.
+\end{itemize}
+
+\subsection{Tri cocktail}
+
+Le tri cocktail est une variante du tri à bulle où l'on balaie le
+tableau alternativement de gauche à droite puis de droite à gauche.
+Cela permet de faire remonter les petits éléments vers le début du
+tableau plus rapidement.
+
+La complexité reste globalement $\mathcal{O}(n^2)$, avec cependant un
+comportement un peu meilleur sur certains jeux de données grâce aux
+deux balayages.
+
+\subsection{Tri par insertion}
+
+Le tri par insertion construit progressivement un tableau trié en
+insérant chaque élément à la bonne position dans la partie déjà triée.
+
+\begin{itemize}
+  \item \textbf{Pire et cas moyen} : $\mathcal{O}(n^2)$~;
+  \item \textbf{Meilleur cas} (tableau déjà trié) : $\mathcal{O}(n)$,
+        car chaque nouvel élément est déjà à sa place.
+\end{itemize}
+
+Cet algorithme est en pratique très efficace sur de petites tailles ou
+sur des données presque triées.
+
+\subsection{Tri par sélection}
+
+Le tri par sélection parcourt le tableau pour trouver le minimum, le
+met en première position, puis recommence sur le sous-tableau restant.
+
+Il effectue toujours le même nombre de comparaisons, indépendamment de
+l'ordre initial des données~: la complexité est
+$\mathcal{O}(n^2)$ dans tous les cas.  
+En revanche, le nombre d'échanges est limité (au plus $n-1$).
+
+\subsection{Tri par comptage (dénombrement)}
+
+Le tri par comptage suppose que les entiers à trier appartiennent à un
+intervalle connu $[0, K]$.  
+On commence par compter, dans un tableau de fréquences, combien de fois
+apparaît chaque valeur possible, puis on reconstruit le tableau trié à
+partir de ces comptages.
+
+\begin{itemize}
+  \item \textbf{Complexité} : $\mathcal{O}(n + K)$~;
+  \item très performant lorsque $K$ est petit devant $n$ (par exemple
+        valeurs dans $[0,1000]$)~;
+  \item beaucoup moins intéressant lorsque $K$ est très grand, car le
+        tableau de comptage devient coûteux en temps et en mémoire.
+\end{itemize}
+
+\subsection{Tri fusion}
+
+Le tri fusion est un algorithme récursif de type «~diviser pour
+régner~».  
+Le tableau est coupé en deux, chacun des deux sous-tableaux est trié,
+puis les deux résultats sont fusionnés.
+
+\begin{itemize}
+  \item \textbf{Complexité}~: $\mathcal{O}(n \log n)$ dans le meilleur,
+        le moyen et le pire des cas~;
+  \item nécessite un tableau auxiliaire pour la phase de fusion.
+\end{itemize}
+
+\subsection{Tri rapide}
+
+Le tri rapide (\emph{quicksort}) choisit un pivot, partitionne le
+tableau en éléments plus petits et plus grands, puis trie récursivement
+les deux parties.
+
+\begin{itemize}
+  \item \textbf{Cas moyen} : $\mathcal{O}(n \log n)$~;
+  \item \textbf{Meilleur cas} : également $\mathcal{O}(n \log n)$~;
+  \item \textbf{Pire cas} (pivot très mauvais à chaque étape) :
+        $\mathcal{O}(n^2)$.
+\end{itemize}
+
+En pratique, avec un choix de pivot raisonnable, c'est souvent l'un des
+tris les plus rapides sur de grandes tailles.
+
+%=========================================================
+\section{Protocole expérimental}
+%=========================================================
+
+\subsection{Génération des données}
+
+Les tableaux de test sont générés une fois pour toutes par un programme
+C (fichier \texttt{benchmark.c}).  
+Pour chaque taille $n$ et pour chaque type de scénario, un fichier texte
+est créé.  
+On distingue les cas suivants~:
+
+\begin{itemize}
+  \item \textbf{Tableau aléatoire}~;
+  \item \textbf{Tableau trié croissant}~;
+  \item \textbf{Tableau trié décroissant}~;
+  \item \textbf{Tableau constant} (toutes les valeurs identiques).
+\end{itemize}
+
+Pour chaque cas, deux plages de valeurs ont été utilisées~:
+
+\begin{itemize}
+  \item \textbf{Petite plage} : entiers dans un intervalle réduit
+        (par exemple $[0,1000]$)~;
+  \item \textbf{Grande plage} : entiers dans un intervalle beaucoup
+        plus large.
+\end{itemize}
+
+Les tailles considérées vont de $n=1000$ jusqu'à $n=49000$, par pas
+de 2000 éléments.  
+Cela permet d'observer l'évolution du temps d'exécution sur une large
+gamme de tailles, tout en restant dans des temps de calcul raisonnables
+pour les tris quadratiques.
+
+\subsection{Exécution des algorithmes}
+
+Un second programme C (\texttt{tri.c}) lit les fichiers générés par
+\texttt{benchmark.c}, applique chaque algorithme de tri à chaque
+instance, mesure le temps d'exécution, puis enregistre les résultats
+dans un fichier CSV \texttt{resultats.csv}.
+
+Chaque ligne de ce fichier contient~:
+
+\begin{itemize}
+  \item le nom de l'algorithme (\texttt{tri})~;
+  \item la taille du tableau (\texttt{taille})~;
+  \item le cas testé (\texttt{cas} : aléatoire, croissant,
+        décroissant, constant)~;
+  \item la plage de valeurs (\texttt{plage} : petite, grande)~;
+  \item le temps mesuré en secondes (\texttt{temps}).
+\end{itemize}
+
+Au total, le fichier \texttt{resultats.csv} contient plus de 1800
+lignes, couvrant toutes les combinaisons de tailles, de cas et
+d'algorithmes.
+
+\subsection{Génération des graphiques}
+
+Un script Python (\texttt{plots.py}) lit le fichier
+\texttt{resultats.csv} avec \texttt{pandas} et produit des graphiques
+au format PNG à l'aide de \texttt{matplotlib}.  
+Les fichiers sont enregistrés dans le dossier \texttt{figures/}.
+
+On dispose notamment des figures suivantes~:
+
+\begin{itemize}
+  \item pour chaque algorithme de tri~: courbes temps--taille pour la
+        plage \emph{petite} et pour la plage \emph{grande}~;
+  \item des figures spécifiques pour le tri par comptage (un graphique
+        par cas)~;
+  \item des figures de comparaison globale des algorithmes pour le cas
+        aléatoire.
+\end{itemize}
+
+Ces figures sont maintenant intégrées et analysées dans la suite du
+rapport.
+
+%=========================================================
+\section{Résultats expérimentaux détaillés}
+%=========================================================
+
+Dans cette section, on commente les courbes obtenues pour chaque
+algorithme.  
+Pour chaque tri, on présente deux graphes : un pour la petite plage de
+valeurs, un pour la grande.
+
+\subsection{Tri à bulle (trois versions)}
+
+\begin{figure}[H]
+  \centering
+  \begin{subfigure}{0.48\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{figures/tri_bulle_basique_petite.png}
+    \caption{Tri à bulle basique (petite plage)}
+  \end{subfigure}\hfill
+  \begin{subfigure}{0.48\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{figures/tri_bulle_basique_grande.png}
+    \caption{Tri à bulle basique (grande plage)}
+  \end{subfigure}
+
+  \medskip
+  \begin{subfigure}{0.48\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{figures/tri_bulle_basique_v2_petite.png}
+    \caption{Tri à bulle v2 (petite plage)}
+  \end{subfigure}\hfill
+  \begin{subfigure}{0.48\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{figures/tri_bulle_basique_v2_grande.png}
+    \caption{Tri à bulle v2 (grande plage)}
+  \end{subfigure}
+
+  \medskip
+  \begin{subfigure}{0.48\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{figures/tri_bulle_optimise_petite.png}
+    \caption{Tri à bulle optimisé (petite plage)}
+  \end{subfigure}\hfill
+  \begin{subfigure}{0.48\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{figures/tri_bulle_optimise_grande.png}
+    \caption{Tri à bulle optimisé (grande plage)}
+  \end{subfigure}
+  \caption{Évolution du temps pour les différentes versions du tri à bulle.}
+\end{figure}
+Pour les trois variantes du tri à bulle, on observe une évolution très caractéristique
+de la complexité quadratique. Dans tous les cas, les courbes présentent une croissance
+parabolique : lorsque la taille du tableau $n$ est multipliée par deux, le temps
+d’exécution est multiplié par un facteur proche de quatre. Ce comportement est
+strictement conforme à la complexité théorique en $\mathcal{O}(n^2)$ annoncée en cours.
+
+\paragraph{Version basique}
+La version basique effectue systématiquement deux boucles imbriquées, sans optimisation.
+Elle traite l’ensemble du tableau même si celui-ci est déjà trié. Les courbes montrent
+clairement que :
+\begin{itemize}
+    \item le cas \textbf{croissant} (meilleur cas théorique) n’apporte aucune amélioration
+          car cette version effectue toujours le même nombre de comparaisons ;
+    \item le cas \textbf{constant} est également aussi coûteux que les autres cas,
+          puisque cette variante ne tient compte ni des égalités ni de l’état de tri ;
+    \item le cas \textbf{décroissant} représente le pire cas observé, avec une courbe
+          systématiquement supérieure, ce qui correspond au nombre maximal
+          d’échanges effectués.
+\end{itemize}
+
+\paragraph{Version améliorée (bulle\_basique\_v2)}
+Cette variante intègre une optimisation consistant à raccourcir la boucle interne
+à mesure que les éléments les plus grands « remontent » en fin de tableau.
+Les courbes montrent une légère amélioration :
+\begin{itemize}
+    \item le cas \textbf{croissant} n’est toujours pas optimisé (pas d’arrêt anticipé),
+          mais le nombre de comparaisons est légèrement réduit ;
+    \item les cas \textbf{aléatoire} et \textbf{décroissant} montrent un gain modéré,
+          car la boucle interne devient un peu plus courte à chaque passage ;
+    \item l’ordre relatif des scénarios reste identique à la version basique.
+\end{itemize}
+
+\paragraph{Version optimisée (bulle\_optimise)}
+C’est la version la plus efficace des trois. Elle intègre un mécanisme d’arrêt anticipé :
+si aucune permutation n’est effectuée au cours d’un passage, l’algorithme s’arrête
+immédiatement. Les observations expérimentales confirment pleinement l’analyse
+théorique :
+\begin{itemize}
+    \item dans le cas \textbf{croissant}, le temps est presque nul : l’algorithme détecte
+          immédiatement que le tableau est déjà trié, ce qui valide le meilleur cas
+          en $\mathcal{O}(n)$ ;
+    \item dans les cas \textbf{aléatoire} ou \textbf{constant}, les courbes sont très
+          proches de celles de bulle\_basique\_v2, car l’optimisation ne s’active que tardivement ;
+    \item dans le cas \textbf{décroissant}, on retrouve le pire cas quadratique, comme prévu.
+\end{itemize}
+
+\paragraph{Petite plage vs grande plage}
+Le passage de la plage « petite » à la plage « grande » ne change pas la forme générale
+des courbes. On note cependant que :
+\begin{itemize}
+    \item l’amplitude des courbes augmente davantage pour les tableaux de grande taille ;
+    \item les différences entre les scénarios (croissant, aléatoire, décroissant)
+          deviennent plus visibles lorsque $n$ augmente ;
+    \item le tri à bulle optimisé conserve une avance nette sur les deux autres versions
+          pour les données triées ou presque triées.
+\end{itemize}
+
+En résumé, cette première étude confirme rigoureusement que les trois variantes
+du tri à bulle restent inutilisables dès que la taille des données dépasse quelques dizaines
+de milliers d’éléments, à l’exception de la version optimisée dans le meilleur cas,
+où l’arrêt anticipé permet une exécution presque linéaire.
+
+\subsection{Tri cocktail}
+
+\begin{figure}[H]
+  \centering
+  \begin{subfigure}{0.48\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{figures/tri_cocktail_petite.png}
+    \caption{Tri cocktail (petite plage)}
+  \end{subfigure}\hfill
+  \begin{subfigure}{0.48\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{figures/tri_cocktail_grande.png}
+    \caption{Tri cocktail (grande plage)}
+  \end{subfigure}
+  \caption{Évolution du temps pour le tri cocktail.}
+\end{figure}
+
+
+
+Le tri cocktail est une variante du tri à bulle qui effectue des parcours dans les
+deux sens : de gauche à droite puis de droite à gauche. Cette amélioration permet
+de réduire légèrement le nombre de passes nécessaires lorsque des éléments très grands
+ou très petits se situent aux extrémités du tableau.
+
+\paragraph{Analyse des graphes (petite et grande plage)}
+Les courbes obtenues présentent la même forme que celles du tri à bulle amélioré :
+une croissance quadratique très marquée, confirmant la complexité théorique en
+$\mathcal{O}(n^2)$.
+
+On observe que :
+
+\begin{itemize}
+    \item les courbes \textbf{croissant} et \textbf{constant} montrent un temps légèrement
+    inférieur à la version basique du tri à bulle, mais restent très proches d’une
+    croissance en $n^2$ ;
+    \item le cas \textbf{décroissant} est le plus coûteux, car les deux parcours
+    avant/arrière doivent réorganiser l’ensemble des éléments ;
+    \item le cas \textbf{aléatoire} produit des performances intermédiaires ;
+    \item la différence entre petite et grande plage est surtout visible dans l’amplitude
+    des temps, qui devient plus importante lorsque $n$ dépasse les 20\,000 éléments.
+\end{itemize}
+
+\paragraph{Comparaison avec les variantes du tri à bulle}
+Comme prévu, le tri cocktail est légèrement plus rapide que le tri à bulle v2 lorsque
+de gros éléments sont mal positionnés, mais son comportement reste globalement
+équivalent : quadratique, lent et rapidement inutilisable sur de grandes tailles.
+
+En résumé, même avec des passes bidirectionnelles, le tri cocktail n’offre qu’un gain
+modéré et reste un tri quadratique à éviter pour des tableaux volumineux.
+
+\subsection{Tri par insertion}
+
+\begin{figure}[H]
+  \centering
+  \begin{subfigure}{0.48\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{figures/tri_insertion_petite.png}
+    \caption{Tri insertion (petite plage)}
+  \end{subfigure}\hfill
+  \begin{subfigure}{0.48\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{figures/tri_insertion_grande.png}
+    \caption{Tri insertion (grande plage)}
+  \end{subfigure}
+  \caption{Évolution du temps pour le tri par insertion.}
+\end{figure}
+
+
+
+Le tri par insertion construit progressivement un tableau trié en insérant chaque
+élément à sa position correcte. Sa complexité théorique est en $\mathcal{O}(n^2)$,
+mais son meilleur cas est linéaire en $\mathcal{O}(n)$ lorsque le tableau est déjà trié.
+
+\paragraph{Analyse des graphes}
+Les résultats expérimentaux montrent exactement ce que prédit la théorie :
+
+\begin{itemize}
+    \item dans le cas \textbf{croissant}, le temps d'exécution est extrêmement faible,
+    ce qui correspond au meilleur cas linéaire : chaque élément est déjà à la bonne
+    position et aucune permutation n’est effectuée ;
+    \item dans le cas \textbf{constant}, l’algorithme effectue quelques comparaisons
+    mais très peu de déplacements, ce qui explique une courbe légèrement supérieure
+    mais encore très faible ;
+    \item le cas \textbf{aléatoire} produit une courbe quadratique classique ;
+    \item le cas \textbf{décroissant} représente le pire cas théorique, car chaque
+    insertion doit décaler l’intégralité du sous-tableau trié.
+\end{itemize}
+
+\paragraph{Petite vs grande plage}
+Lorsque la plage de valeurs augmente, les courbes conservent la même forme.
+La différence se manifeste principalement par des variations aléatoires,
+liées aux coûts des comparaisons entre valeurs plus éloignées.
+
+\paragraph{Conclusion}
+Le tri par insertion confirme son excellent comportement sur les tableaux
+déjà triés ou presque triés. En revanche, son pire cas reste quadratique,
+ce qui le rend rapidement inutilisable pour des tableaux supérieurs à 30\,000 éléments.
+
+
+\subsection{Tri par sélection}
+
+\begin{figure}[H]
+  \centering
+  \begin{subfigure}{0.48\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{figures/tri_selection_petite.png}
+    \caption{Tri sélection (petite plage)}
+  \end{subfigure}\hfill
+  \begin{subfigure}{0.48\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{figures/tri_selection_grande.png}
+    \caption{Tri sélection (grande plage)}
+  \end{subfigure}
+  \caption{Évolution du temps pour le tri par sélection.}
+\end{figure}
+
+
+
+Le tri par sélection cherche à chaque itération le plus petit élément restant
+dans le tableau et le place à la bonne position. Sa complexité est rigoureusement
+quadratique en $\mathcal{O}(n^2)$, quelle que soit la configuration initiale.
+
+\paragraph{Analyse des courbes}
+Les courbes expérimentales illustrent parfaitement cette absence de meilleur cas :
+
+\begin{itemize}
+    \item les quatre courbes (croissant, constant, aléatoire, décroissant) sont
+    presque parfaitement confondues ;
+    \item la différence entre les scénarios est négligeable : le nombre de comparaisons
+    est identique pour toutes les configurations ;
+    \item sur grande plage comme sur petite, l’évolution est strictement parabolique.
+\end{itemize}
+
+\paragraph{Interprétation}
+Cette stabilité est logique : le tri par sélection effectue systématiquement
+le même nombre d’opérations, que le tableau soit déjà trié ou totalement inversé.
+
+\paragraph{Conclusion}
+Bien que simple à implémenter et stable en termes de comportement, le tri par sélection
+est l’un des moins performants sur les grands tableaux car il ne bénéficie d’aucun
+meilleur cas et reste strictement en $\mathcal{O}(n^2)$.
+
+
+\subsection{Tri fusion}
+
+\begin{figure}[H]
+  \centering
+  \begin{subfigure}{0.48\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{figures/tri_fusion_petite.png}
+    \caption{Tri fusion (petite plage)}
+  \end{subfigure}\hfill
+  \begin{subfigure}{0.48\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{figures/tri_fusion_grande.png}
+    \caption{Tri fusion (grande plage)}
+  \end{subfigure}
+  \caption{Évolution du temps pour le tri fusion.}
+\end{figure}
+
+
+
+Le tri fusion est l’un des algorithmes les plus performants étudiés ici.
+Il repose sur une stratégie diviser-pour-régner et présente une complexité
+théorique en $\mathcal{O}(n \log n)$ dans tous les cas.
+
+\paragraph{Analyse des graphes}
+Les résultats expérimentaux confirment parfaitement ce comportement :
+
+\begin{itemize}
+    \item les quatre cas (croissant, constant, aléatoire, décroissant) produisent
+    des courbes quasiment identiques ;
+    \item aucune explosion quadratique n’est visible, ce qui contraste fortement avec
+    les tris par comparaison quadratiques ;
+    \item l’échelle de temps est très faible, même pour les tableaux de 50\,000 éléments.
+\end{itemize}
+
+\paragraph{Petite vs grande plage}
+L’élargissement de la plage de valeurs n’a pratiquement aucun impact sur les performances :
+le tri fusion compare des valeurs, mais la nature des valeurs n’affecte pas le nombre
+de comparaisons nécessaires.
+
+\paragraph{Conclusion}
+Le tri fusion est l’un des plus fiables et des plus réguliers en termes de performance.
+Sa complexité en $\mathcal{O}(n \log n)$ le place parmi les meilleurs tris généraux.
+
+
+\subsection{Tri rapide}
+
+\begin{figure}[H]
+  \centering
+  \begin{subfigure}{0.48\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{figures/tri_rapide_petite.png}
+    \caption{Tri rapide (petite plage)}
+  \end{subfigure}\hfill
+  \begin{subfigure}{0.48\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{figures/tri_rapide_grande.png}
+    \caption{Tri rapide (grande plage)}
+  \end{subfigure}
+  \caption{Évolution du temps pour le tri rapide.}
+\end{figure}
+
+
+
+Le tri rapide repose également sur une stratégie diviser-pour-régner, mais sa
+complexité dépend du choix du pivot. Théoriquement :
+\begin{itemize}
+    \item meilleur cas : $\mathcal{O}(n \log n)$ ;
+    \item cas moyen : $\mathcal{O}(n \log n)$ ;
+    \item pire cas : $\mathcal{O}(n^2)$, lorsque le pivot produit des partitions très déséquilibrées.
+\end{itemize}
+
+\paragraph{Analyse des courbes}
+Les graphes montrent que :
+
+\begin{itemize}
+    \item le cas \textbf{aléatoire} produit les meilleures performances ;
+    \item le cas \textbf{croissant} ou \textbf{décroissant} peut parfois produire des partitions déséquilibrées :
+          on observe certains pics anormaux pour les grandes tailles ;
+    \item malgré cela, pour $n < 50\,000$, aucune explosion quadratique n’apparaît,
+          ce qui montre que l’implémentation du pivot fonctionne correctement.
+\end{itemize}
+
+\paragraph{Impact de la plage}
+L’augmentation de la plage de valeurs a un impact très limité, ce qui est normal :
+le tri rapide ne dépend pas directement de la valeur des éléments mais de leur ordre relatif.
+
+\paragraph{Conclusion}
+Le tri rapide offre un excellent compromis entre simplicité et performance.
+Ses rares pics sont cohérents avec la possibilité d’un mauvais pivot,
+mais son comportement global reste très proche de celui du tri fusion.
+
+
+\subsection{Tri par comptage}
+
+Pour le tri par comptage, on dispose de graphes dédiés pour chaque cas.
+
+\begin{figure}[H]
+  \centering
+  \begin{subfigure}{0.48\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{figures/comptage_aleatoire.png}
+    \caption{Comptage -- cas aléatoire}
+  \end{subfigure}\hfill
+  \begin{subfigure}{0.48\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{figures/comptage_croissant.png}
+    \caption{Comptage -- cas croissant}
+  \end{subfigure}
+
+  \medskip
+  \begin{subfigure}{0.48\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{figures/comptage_decroissant.png}
+    \caption{Comptage -- cas décroissant}
+  \end{subfigure}\hfill
+  \begin{subfigure}{0.48\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{figures/comptage_constant.png}
+    \caption{Comptage -- cas constant}
+  \end{subfigure}
+  \caption{Temps du tri par comptage selon le cas testé.}
+\end{figure}
+
+
+
+Le tri par comptage n’est pas un tri par comparaison. Il est linéaire en
+$\mathcal{O}(n + K)$, où $K$ est la taille de la plage des valeurs possibles.
+
+\paragraph{Analyse des graphes}
+Les résultats expérimentaux montrent :
+
+\begin{itemize}
+    \item une courbe extrêmement faible pour la \textbf{petite plage} (0 à 1000),
+          proche d’un temps linéaire ;
+    \item une explosion de temps pour la \textbf{grande plage},
+          car $K$ augmente fortement et domine la complexité ;
+    \item cette différence très marquée entre petite et grande plage confirme
+          exactement la formule $\mathcal{O}(n + K)$.
+\end{itemize}
+
+\paragraph{Interprétation}
+Le tri par comptage est idéal pour des valeurs limitées dans une petite plage.
+Mais dès que $K$ devient trop grand, il devient inutilement coûteux en mémoire
+et en temps, ce que l’expérience met en évidence de façon spectaculaire.
+
+\paragraph{Conclusion}
+Le tri par comptage est le seul algorithme étudié ici dont la performance dépend
+directement de la plage des valeurs. Lorsqu’il est applicable, c’est le plus rapide
+de tous, mais il reste inutilisable sur une plage trop large.
+
+
+%=========================================================
+\section{Comparaisons globales}
+%=========================================================
+
+Pour mieux visualiser les différences entre les familles d'algorithmes,
+on dispose de graphes qui superposent plusieurs tris sur le même
+scénario.
+
+\begin{figure}[H]
+  \centering
+  \begin{subfigure}{0.48\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{figures/comparaison_aleatoire_petite.png}
+    \caption{Comparaison -- cas aléatoire, petite plage}
+  \end{subfigure}\hfill
+  \begin{subfigure}{0.48\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{figures/comparaison_aleatoire_grande.png}
+    \caption{Comparaison -- cas aléatoire, grande plage}
+  \end{subfigure}
+  \caption{Comparaison globale des algorithmes de tri sur le cas aléatoire.}
+\end{figure}
+
+
+
+Les figures de comparaison montrent trois familles de comportements :
+
+\begin{itemize}
+    \item les algorithmes \textbf{quadratiques} ($\mathcal{O}(n^2)$) :
+    tri à bulle (toutes versions), tri cocktail, tri insertion, tri sélection ;
+
+    \item les algorithmes \textbf{$\mathcal{O}(n \log n)$} :
+    tri rapide, tri fusion ;
+
+    \item le tri \textbf{linéaire} en fonction de $n$ (plus $K$) :
+    tri par comptage.
+\end{itemize}
+
+À partir d’environ $n = 10\,000$, l’écart devient énorme :
+le tri à bulle dépasse plusieurs secondes, alors que le tri rapide et le tri fusion
+restent inférieurs à la demi-seconde. Le tri par comptage reste imbattable dans
+la petite plage, mais perd tout intérêt lorsque $K$ augmente fortement.
+
+La comparaison petite/grande plage met en évidence que :
+\begin{itemize}
+    \item la plage a peu d’effet sur les tris quadratiques ;
+    \item elle a un impact très fort sur le tri par comptage ;
+    \item les tris $n \log n$ restent les plus stables.
+\end{itemize}
+
+
+À partir d'environ $n=10000$, l'écart entre les algorithmes
+quadratiques et ceux en $n\log n$ devient énorme~: le temps de tri à
+bulle dépasse plusieurs secondes alors que le tri rapide et le tri
+fusion restent inférieurs à la demi-seconde.
+
+La comparaison petite/grande plage met également en évidence que~:
+
+\begin{itemize}
+  \item la plage de valeurs a peu d'effet sur les algorithmes de
+        comparaison (bulle, insertion, sélection, fusion, rapide)~;
+  \item en revanche, elle a un impact très fort sur le tri par
+        comptage, comme prévu.
+\end{itemize}
+
+%=========================================================
+\section{Discussion et lien avec la théorie}
+%=========================================================
+
+D'un point de vue théorique, on distingue classiquement :
+
+\begin{itemize}
+  \item les algorithmes de tri par comparaison en $\mathcal{O}(n^2)$~;
+  \item ceux en $\mathcal{O}(n \log n)$~;
+  \item et les algorithmes non basés sur la comparaison (comptage,
+        radix, etc.) pouvant atteindre $\mathcal{O}(n)$ sous certaines
+        hypothèses.
+\end{itemize}
+
+Les résultats expérimentaux obtenus sur ce projet sont globalement
+\textbf{en accord} avec ces prédictions~:
+
+\begin{itemize}
+  \item les tris à bulle, cocktail, insertion et sélection deviennent
+        très rapidement impraticables lorsque $n$ dépasse quelques
+        dizaines de milliers~;
+  \item le tri par insertion reste toutefois intéressant pour de
+        petites tailles ou des tableaux presque triés~;
+  \item le tri fusion et le tri rapide se comportent beaucoup mieux, et
+        sont clairement à privilégier pour des tableaux de grande
+        taille~;
+  \item le tri par comptage est imbattable lorsque la plage de valeurs
+        est petite, mais perd de l'intérêt dès que cette plage
+        s'élargit.
+\end{itemize}
+
+Quelques écarts peuvent venir de détails d'implémentation (choix du
+pivot pour le tri rapide, gestion de la mémoire pour le tri fusion,
+optimisations du compilateur, etc.) mais la tendance globale reste très
+proche de ce que prédit l'analyse asymptotique.
+
+%=========================================================
+\section{Conclusion}
+%=========================================================
+
+Ce projet a permis de mettre en pratique l'analyse de complexité des
+algorithmes de tri en la confrontant à des mesures expérimentales sur
+de véritables données.
+
+Les principaux enseignements sont les suivants~:
+
+\begin{itemize}
+  \item la complexité asymptotique ($\mathcal{O}(n^2)$,
+        $\mathcal{O}(n \log n)$, $\mathcal{O}(n + K)$) se retrouve très
+        clairement dans les courbes de temps~;
+  \item pour des tableaux de grande taille, les algorithmes quadratiques
+        doivent absolument être évités~;
+  \item le tri rapide et le tri fusion offrent un excellent compromis
+        entre simplicité d'implémentation et performances~;
+  \item le tri par comptage est extrêmement performant lorsque ses
+        hypothèses sont satisfaites (plage de valeurs bornée et
+        raisonnable).
+\end{itemize}
+
+Enfin, l'utilisation combinée de C pour l'expérimentation et de Python
+pour l'analyse de données et la génération de graphiques illustre bien
+une démarche complète d'évaluation algorithmique, depuis l'implémentation
+jusqu'au rapport final.
+
+\end{document}
