@@ -1,11 +1,18 @@
 import os
+import pathlib
 import pandas as pd
 import matplotlib.pyplot as plt
+
+# Chemins relatifs au script (fonctionne depuis n'importe où)
+ROOT = pathlib.Path(__file__).parent.parent
+DATA_DIR    = ROOT / "data"
+FIGURES_DIR = ROOT / "figures"
+FIGURES_DIR.mkdir(exist_ok=True)
 
 # =========================
 #  Chargement des données
 # =========================
-df = pd.read_csv("resultats.csv")
+df = pd.read_csv(DATA_DIR / "resultats.csv")
 
 # On s'assure qu'il y a bien les colonnes attendues
 attendues = {"tri", "taille", "cas", "plage", "temps"}
@@ -52,7 +59,7 @@ for tri in tris:
         plt.grid(True, alpha=0.3)
         plt.tight_layout()
 
-        nom_fichier = f"figures/tri_{tri}_{plage}.png"
+        nom_fichier = FIGURES_DIR / f"tri_{tri}_{plage}.png"
         plt.savefig(nom_fichier, dpi=150)
         plt.close()
         print(f"[OK] Sauvegardé : {nom_fichier}")
@@ -85,7 +92,7 @@ for plage in plages:
     plt.grid(True, alpha=0.3)
     plt.tight_layout()
 
-    nom_fichier = f"figures/comparaison_aleatoire_{plage}.png"
+    nom_fichier = FIGURES_DIR / f"comparaison_aleatoire_{plage}.png"
     plt.savefig(nom_fichier, dpi=150)
     plt.close()
     print(f"[OK] Sauvegardé : {nom_fichier}")
@@ -120,7 +127,7 @@ if not df_comptage.empty:
         plt.grid(True, alpha=0.3)
         plt.tight_layout()
 
-        nom_fichier = f"figures/comptage_{cas}.png"
+        nom_fichier = FIGURES_DIR / f"comptage_{cas}.png"
         plt.savefig(nom_fichier, dpi=150)
         plt.close()
         print(f"[OK] Sauvegardé : {nom_fichier}")
